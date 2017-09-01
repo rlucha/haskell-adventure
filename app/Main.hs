@@ -7,6 +7,7 @@ import GHC.Generics
 import Data.Monoid ((<>))
 import Data.Aeson (FromJSON, ToJSON)
 import Web.Scotty
+import Db
 
 data User = User {
     userId :: Int
@@ -35,9 +36,13 @@ routes =
 
   -- get "/users" $ do json allUsers
 
-  get "/users/:id" $ do
-    id <- param "id"
-    json (filter (matchesId id) allUsers)
+  -- get "/users/:id" $ do
+  --   id <- param "id"
+  --   json (filter (matchesId id) allUsers)
+
+  get "/test" $ do
+    users <- Db.getAllUsers
+    text users
 
 main :: IO ()
 main = do
