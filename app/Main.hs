@@ -7,11 +7,21 @@ import Control.Monad.IO.Class
 
 import Db
 
+getUserHandler :: ActionM()
+getUserHandler = do
+  id <- param "id"
+  user <- liftIO (Db.getUser id) -- liftIO to actionM
+  json user
+
+getAllUsersHandler :: ActionM()
+getAllUsersHandler = do
+  users <- liftIO Db.getAllUsers -- liftIO to actionM
+  json users
+
 routes :: ScottyM ()
-routes =
-  get "/all_users" $ do
-    user <- liftIO Db.getAllUsers -- liftIO to actionM
-    json user
+routes = do
+  get "/users" getAllUsersHandler
+  get "/users/:id" getUserHandler
 
 main :: IO ()
 main = do

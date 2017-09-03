@@ -8,7 +8,7 @@ import Database.HDBC
 import Database.HDBC.Sqlite3
 import Data.Aeson (FromJSON, ToJSON)
 
-data GameUser = GameUser String String
+data GameUser = GameUser Integer String String
   deriving (Show, Generic)
 
 instance ToJSON GameUser
@@ -18,7 +18,7 @@ instance FromJSON GameUser
 -- getGameUserDetails (GameUser username email) = show username ++ show email
 
 sqlToGameUser::[SqlValue] -> GameUser
-sqlToGameUser row = GameUser (fromSql $ head row) (fromSql $ row!!1)
+sqlToGameUser row = GameUser (fromSql $ head row) (fromSql $ row!!1) (fromSql $ row!!2)
 
 getAllUsers:: IO [GameUser]
 getAllUsers = do
@@ -26,3 +26,9 @@ getAllUsers = do
   conn <- connectSqlite3 "db.sql"
   q <- quickQuery' conn "select * from users" []
   return (map sqlToGameUser q)
+
+getUser:: Integer -> IO GameUser
+getUser id = do
+  conn <- connectSqlite3 "db.sql"
+  q <- quickQuery' conn "select * from users where id = ?" [toSql id]
+  return $ head (map sqlToGameUser q)
