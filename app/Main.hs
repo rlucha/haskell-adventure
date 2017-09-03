@@ -7,7 +7,12 @@ import GHC.Generics
 import Data.Monoid ((<>))
 import Data.Aeson (FromJSON, ToJSON)
 import Web.Scotty
+import Data.Text.Lazy
+import Control.Monad
+import Control.Monad.IO.Class
+
 import Db
+
 
 data User = User {
     userId :: Int
@@ -28,6 +33,8 @@ matchesId id user = userId user == id
 hello :: ActionM ()
 hello = text "Hello world"
 
+prnUsers = fmap ((pack . Db.getGameUserDetails) . Prelude.head) Db.getAllUsers
+
 routes :: ScottyM ()
 routes =
   -- get "/hello/:name" $ do
@@ -40,9 +47,13 @@ routes =
   --   id <- param "id"
   --   json (filter (matchesId id) allUsers)
 
-  get "/test" $ do
-    users <- Db.getAllUsers
-    text users
+  get "/all_users" $ do
+    user <- liftIO prnUsers
+    text user
+    -- users   <- Db.getAllUsers
+    -- user1   <- Prelude.head users
+    -- userStr <- pack $ Db.getGameUserDetails user1
+
 
 main :: IO ()
 main = do
