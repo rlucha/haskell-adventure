@@ -14,8 +14,8 @@ data GameUser = GameUser String String
 instance ToJSON GameUser
 instance FromJSON GameUser
 
-getGameUserDetails :: GameUser -> String
-getGameUserDetails (GameUser username email) = show username ++ show email
+-- getGameUserDetails :: GameUser -> String
+-- getGameUserDetails (GameUser username email) = show username ++ show email
 
 sqlToGameUser::[SqlValue] -> GameUser
 sqlToGameUser row = GameUser (fromSql $ head row) (fromSql $ row!!1)
