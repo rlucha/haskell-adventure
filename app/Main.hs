@@ -48,12 +48,8 @@ routes =
   --   json (filter (matchesId id) allUsers)
 
   get "/all_users" $ do
-    user <- liftIO prnUsers
+    user <- liftIO prnUsers -- liftIO to actionM
     text user
-    -- users   <- Db.getAllUsers
-    -- user1   <- Prelude.head users
-    -- userStr <- pack $ Db.getGameUserDetails user1
-
 
 main :: IO ()
 main = do
