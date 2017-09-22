@@ -6,12 +6,14 @@ import GHC.Generics
 import Control.Monad.IO.Class
 import Control.Applicative ((<$>), (<*>))
 import Data.Aeson (decode, FromJSON)
-import Data.ByteString.Lazy
+import Data.ByteString.Lazy (ByteString)
+import Data.List (find)
 
 data Room = Room {
     name :: String
   , description :: String
-  -- , exits :: [Exit]
+  , exits :: [Exit]
+  , uid :: Integer
 } deriving (Eq, Show, Generic)
 
 instance FromJSON Room
@@ -23,7 +25,7 @@ instance FromJSON Direction
 
 data Exit = Exit {
   direction :: Direction,
-  room :: Room
+  roomID :: Integer
 } deriving (Eq, Generic)
 
 instance FromJSON Exit
@@ -34,6 +36,18 @@ instance Show Exit where
 create :: ByteString -> Maybe Room
 create = decode
 
+getExitAtDirection :: Room -> Direction -> Maybe Exit
+getExitAtDirection room dir = find (\ex -> direction ex == dir) (exits room)
+
+charToDirection :: Char -> Direction
+charToDirection d = case d of
+  'n' -> N
+  's' -> S
+  'e' -> E
+  'w' -> W
+  _ -> Invalid
+
+-- How to load json from files and create data from it
 -- createRoom :: B.ByteString -> Maybe Room
 -- createRoom = decode
 --
