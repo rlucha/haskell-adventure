@@ -11,6 +11,7 @@ import Data.List (find)
 
 data Room = Room {
     name :: String
+  , title :: String
   , description :: String
   , exits :: [Exit]
   , uid :: Integer
@@ -18,7 +19,7 @@ data Room = Room {
 
 instance FromJSON Room
 
-data Direction = N | S | W | E | Invalid
+data Direction = N | S | W | E | Back | Invalid
   deriving (Eq, Show, Generic)
 
 instance FromJSON Direction
@@ -45,6 +46,7 @@ charToDirection d = case d of
   's' -> S
   'e' -> E
   'w' -> W
+  'b' -> Back
   _ -> Invalid
 
 -- How to load json from files and create data from it
