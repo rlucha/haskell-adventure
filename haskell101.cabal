@@ -22,7 +22,7 @@ library
 executable haskell101-exe
   hs-source-dirs:      app
   main-is:             Main.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -Wwarn -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , haskell101
                      , text
@@ -31,7 +31,9 @@ executable haskell101-exe
                      , HDBC
                      , HDBC-sqlite3
                      , bytestring
-                     , mongoDB
+                     , Safe
+                     , data-default
+                     , mtl
 
   default-language:    Haskell2010
 
@@ -41,7 +43,7 @@ test-suite haskell101-test
   main-is:             Spec.hs
   build-depends:       base
                      , haskell101
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wwarn -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 source-repository head
