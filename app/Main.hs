@@ -2,15 +2,18 @@ module Main where
 
 import Models.Room.Room (Room(..), Direction(..), navigateToRoom, getRoom)
 import Control.Monad()
-import Data.Maybe ()
+import Data.Maybe()
 
 -- create server / client communication
 
 data State = State {
   room :: Room,
   hp :: Integer,
-  roomPath :: [Integer]
-} deriving (Eq)
+  stateHistory :: Maybe [State]
+} deriving (Eq, Show)
+
+-- create an instance of Eq and ignore stateHistory? Or maybe create a new Array out of State and check previous and current...
+
 
 data Action = String | NoAction
 
@@ -19,17 +22,62 @@ createShell = do
   putStr "-> "
   getLine
 
-handleCommands :: Maybe State -> IO ()
+
+stackState :: State -> State -> State
+stackState state nextState = case stateHistory state of
+  Just st' -> state { stateHistory = Just $ st' ++ [nextState]}
+  Nothing -> state { stateHistory = Just [nextState]}
+
+handleCommands :: State -> IO ()
 handleCommands state =
-  case state of
-    Just s' -> do
-      printStatus s' -- make this only if we have changed rooms or something?
-      input <- createShell
-      newState <- updateState s' input
+  -- If you don't have  a stateHistory, we treat as initialState
+  case stateHistory state of
+    Nothing -> do -- This is just for the initial Program case
+      _ <- printStatus state
+      newState <- pure $ stackState state state
       handleCommands newState
-    Nothing ->
-      --Try to restore state from DB? Do not crash!
-      print "Fatal Error"
+    Just sth -> do
+      isNewRoom <- pure $ room (last sth) /= room state
+      if isNewRoom
+        then do
+          _ <- print "You move from room"
+          _ <- printStatus state
+          input <- createShell
+          newState <- updateState state input
+          newState' <- pure $ stackState state newState
+          handleCommands newState'
+        else do
+          input <- createShell
+          newState <- updateState state input
+          handleCommands newState
+
+
+-- -- Handle the maybe state for the initial case (fromMaybe?)
+-- handleCommands :: State -> State -> IO ()
+-- handleCommands state nextState =
+--   case nextState of
+--     EmptyState -> do
+--       -- fetch the state from the last stateHistory item
+--       _ <- print nextState
+--       lastGoodState <- pure $ last (stateHistory state)
+--       input <- createShell
+--       newState <- updateState lastGoodState input
+--       handleCommands lastGoodState newState
+--     State {} ->  --first time we might have an EmptyState here... we don't want to do that
+--       case state of
+--         State {} -> do
+--           st' <- pure $ state { stateHistory = stateHistory state ++ [nextState] }
+--           _ <- printStatus nextState
+--           input <- createShell
+--           newState <- updateState st' input
+--           handleCommands state newState
+--         EmptyState -> do
+--           st' <- pure nextState
+--           _ <- printStatus nextState
+--           input <- createShell
+--           newState <- updateState st' input
+--           handleCommands state newState
+
 
 printStatus :: State -> IO ()
 printStatus state = do
@@ -39,27 +87,25 @@ printStatus state = do
   _ <- putStrLn $ description (room state)
   pure ()
 
-maybeUpdateRoom :: State -> Maybe Room -> Maybe State
-maybeUpdateRoom st = fmap stateFromRoom
-    where stateFromRoom :: Room -> State
-          stateFromRoom r = st
-            { room = r
-            , roomPath = roomPath st ++ [uid r]
-            }
 
-updateState :: State -> String -> IO (Maybe State)
+updateRoom :: State -> Maybe Room -> State
+updateRoom st r = case r of
+    Just r' -> st { room = r' }
+    Nothing -> st
+
+updateState :: State -> String -> IO State
 updateState state actions = do
   let r = room state
   -- [x, y] <- sequence $ fmap (navigateToRoom r) [N, S]
   [x, y] <- traverse (navigateToRoom r) [N, S]
 
-  xr <- pure $ maybeUpdateRoom state x
-  yr <- pure $ maybeUpdateRoom state y
+  xr <- pure $ updateRoom state x
+  yr <- pure $ updateRoom state y
 
   case actions of
     "n" -> pure xr
     "s" -> pure yr
-    _ -> pure Nothing -- This crashes and it shouldn't ... what to do when not recognised command?
+    _ -> pure state
 
 getRoomDescription :: Room -> String
 getRoomDescription room' = "" ++ title room' ++ " " ++ roomExitsToString room' ++ " " ++ description room'
@@ -89,13 +135,13 @@ createInitialState = do
   pure State {
       room = initialRoom
     , hp = 10
-    , roomPath = []
+    , stateHistory = Nothing
   }
 
 main :: IO()
 main = do
   initialState <- createInitialState
-  handleCommands $ Just initialState
+  handleCommands initialState
 
 -- Scotty server example
 
