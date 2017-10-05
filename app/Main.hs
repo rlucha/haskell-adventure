@@ -1,47 +1,44 @@
+-- TODO
+-- Create server / client communication
+-- Use handleDirections to print player direction
+-- Move terminal output fns to own file
+-- Add creation of room from terminal
+
 module Main where
 
 import Models.Room.Room (Room(..), Direction(..), navigateToRoom, getRoom)
 import Control.Monad()
 import Data.Maybe()
 
-
 data App = App {
     states :: Maybe [State]
   , currentState :: State
 } deriving (Show)
-
--- create server / client communication
 
 data State = State {
   room :: Room,
   hp :: Integer
 } deriving (Eq, Show)
 
--- create an instance of Eq and ignore stateHistory? Or maybe create a new Array out of State and check previous and current...
-
-
-data Action = String | NoAction
-
 createShell :: IO String
 createShell = do
   putStr "-> "
   getLine
 
--- check that state is different before pushing
+-- Appends the currentState to the app states history
+-- if different from the previous one
 stackState :: App -> App
 stackState app =
   let currentState' = currentState app in
     case states app of
       Just states' ->
         if currentState' /= last states'
-          then app { states = Just $ states' ++ [currentState']} -- append only if different states
+          then app { states = Just $ states' ++ [currentState']}
           else app
       Nothing -> app { states = Just [currentState']}
 
--- Change this to App, handle array of states instead of internal State history, to make State Eq easy
 handleCommands :: App -> IO ()
 handleCommands app =
--- If you don't have  a stateHistory, we treat as initialState
   case states app of
     Nothing -> do -- This is just for the initial Program case
       newApp <- pure $ stackState app
@@ -99,13 +96,6 @@ getRoomDescription room' = "" ++ title room' ++ " " ++ roomExitsToString room' +
 roomExitsToString :: Room -> String
 roomExitsToString room' = head (map show (exits room'))
 
--- getRoomFromDirection :: Room -> Char -> IO Room
--- getRoomFromDirection room dir =
---   case getExitAtDirection room  $ charToDirection dir of
---     Just (Exit _ roomID) -> getRoom roomID
---     Nothing -> nothingRoom
---     where nothingRoom = getRoom 4
-
 handleDirections :: Char -> IO()
 handleDirections a =
   case a of
@@ -127,44 +117,3 @@ main :: IO()
 main = do
   initialState <- createInitialState
   handleCommands App { states =  Nothing , currentState = initialState }
-
--- Scotty server example
-
--- {-# LANGUAGE OverloadedStrings #-}
---
--- module Main where
---
--- import Web.Scotty
--- import Control.Monad.IO.Class
---
--- import Db
---
--- getUserHandler :: ActionM()
--- getUserHandler = do
---   id <- param "id"
---   user <- liftIO (Db.getUser id) -- liftIO to actionM
---   json user
---
--- getAllUsersHandler :: ActionM()
--- getAllUsersHandler = do
---   users <- liftIO Db.getAllUsers -- liftIO to actionM
---   json users
---
--- createRoom :: ActionM()
--- createRoom = do
---   room <- params
---   text (room)
---
--- getFirstParam :: Param -> String
--- getFirstParam param = (head Param)
---
--- routes :: ScottyM ()
--- routes = do
---   get "/users" getAllUsersHandler
---   get "/users/:id" getUserHandler
---   post "/rooms/create" createRoom
---
--- main :: IO ()
--- main = do
---   putStrLn "Starting Server..."
---   scotty 4888 routes
