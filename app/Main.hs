@@ -4,12 +4,17 @@ import Models.Room.Room (Room(..), Direction(..), navigateToRoom, getRoom)
 import Control.Monad()
 import Data.Maybe()
 
+
+data App = App {
+    states :: Maybe [State]
+  , currentState :: State
+} deriving (Show)
+
 -- create server / client communication
 
 data State = State {
   room :: Room,
-  hp :: Integer,
-  stateHistory :: Maybe [State]
+  hp :: Integer
 } deriving (Eq, Show)
 
 -- create an instance of Eq and ignore stateHistory? Or maybe create a new Array out of State and check previous and current...
@@ -22,35 +27,43 @@ createShell = do
   putStr "-> "
   getLine
 
+-- check that state is different before pushing
+stackState :: App -> App
+stackState app =
+  let currentState' = currentState app in
+    case states app of
+      Just states' ->
+        if currentState' /= last states'
+          then app { states = Just $ states' ++ [currentState']} -- append only if different states
+          else app
+      Nothing -> app { states = Just [currentState']}
 
-stackState :: State -> State -> State
-stackState state nextState = case stateHistory state of
-  Just st' -> state { stateHistory = Just $ st' ++ [nextState]}
-  Nothing -> state { stateHistory = Just [nextState]}
-
-handleCommands :: State -> IO ()
-handleCommands state =
-  -- If you don't have  a stateHistory, we treat as initialState
-  case stateHistory state of
+-- Change this to App, handle array of states instead of internal State history, to make State Eq easy
+handleCommands :: App -> IO ()
+handleCommands app =
+-- If you don't have  a stateHistory, we treat as initialState
+  case states app of
     Nothing -> do -- This is just for the initial Program case
-      _ <- printStatus state
-      newState <- pure $ stackState state state
-      handleCommands newState
-    Just sth -> do
-      isNewRoom <- pure $ room (last sth) /= room state
-      if isNewRoom
-        then do
-          _ <- print "You move from room"
-          _ <- printStatus state
-          input <- createShell
-          newState <- updateState state input
-          newState' <- pure $ stackState state newState
-          handleCommands newState'
-        else do
-          input <- createShell
-          newState <- updateState state input
-          handleCommands newState
+      newApp <- pure $ stackState app
+      _ <- printStatus newApp
+      handleCommands newApp
+    Just _ -> do
+      _ <- handleRoomUpdate app
+      newApp' <- pure $ stackState app
+      input <- createShell
+      newApp <- updateStateRoom newApp' input
+      handleCommands newApp
 
+handleRoomUpdate :: App -> IO ()
+handleRoomUpdate app =
+  case states app of
+    Just states' ->
+      if currentRoom /= lastRoom
+        then printStatus app
+        else pure ()
+      where currentRoom = room (currentState app)
+            lastRoom = room $ last states'
+    Nothing -> pure ()
 
 -- -- Handle the maybe state for the initial case (fromMaybe?)
 -- handleCommands :: State -> State -> IO ()
@@ -61,7 +74,7 @@ handleCommands state =
 --       _ <- print nextState
 --       lastGoodState <- pure $ last (stateHistory state)
 --       input <- createShell
---       newState <- updateState lastGoodState input
+--       newState <- updateStateRoom lastGoodState input
 --       handleCommands lastGoodState newState
 --     State {} ->  --first time we might have an EmptyState here... we don't want to do that
 --       case state of
@@ -69,43 +82,44 @@ handleCommands state =
 --           st' <- pure $ state { stateHistory = stateHistory state ++ [nextState] }
 --           _ <- printStatus nextState
 --           input <- createShell
---           newState <- updateState st' input
+--           newState <- updateStateRoom st' input
 --           handleCommands state newState
 --         EmptyState -> do
 --           st' <- pure nextState
 --           _ <- printStatus nextState
 --           input <- createShell
---           newState <- updateState st' input
+--           newState <- updateStateRoom st' input
 --           handleCommands state newState
 
 
-printStatus :: State -> IO ()
-printStatus state = do
-  _ <- putStrLn ""
-  _ <- putStrLn $ title (room state)
-  _ <- putStrLn $ "\x1b[32m" ++ "Exits: " ++ roomExitsToString (room state) ++ "\x1b[0m" ++ "\n"
-  _ <- putStrLn $ description (room state)
-  pure ()
+printStatus :: App -> IO ()
+printStatus app =
+  let currentState' = currentState app in do
+    _ <- putStrLn ""
+    _ <- putStrLn $ title (room currentState')
+    _ <- putStrLn $ "\x1b[32m" ++ "Exits: " ++ roomExitsToString (room currentState') ++ "\x1b[0m" ++ "\n"
+    _ <- putStrLn $ description (room currentState')
+    pure ()
 
 
-updateRoom :: State -> Maybe Room -> State
-updateRoom st r = case r of
-    Just r' -> st { room = r' }
-    Nothing -> st
+updateRoom :: App -> Maybe Room -> App
+updateRoom app r = case r of
+    Just r' -> app { currentState = (currentState app) { room = r' } }
+    Nothing -> app
 
-updateState :: State -> String -> IO State
-updateState state actions = do
-  let r = room state
+updateStateRoom :: App -> String -> IO App
+updateStateRoom app actions = do
+  let r = room (currentState app)
   -- [x, y] <- sequence $ fmap (navigateToRoom r) [N, S]
   [x, y] <- traverse (navigateToRoom r) [N, S]
 
-  xr <- pure $ updateRoom state x
-  yr <- pure $ updateRoom state y
+  xr <- pure $ updateRoom app x
+  yr <- pure $ updateRoom app y
 
   case actions of
     "n" -> pure xr
     "s" -> pure yr
-    _ -> pure state
+    _ -> pure app
 
 getRoomDescription :: Room -> String
 getRoomDescription room' = "" ++ title room' ++ " " ++ roomExitsToString room' ++ " " ++ description room'
@@ -135,13 +149,12 @@ createInitialState = do
   pure State {
       room = initialRoom
     , hp = 10
-    , stateHistory = Nothing
   }
 
 main :: IO()
 main = do
   initialState <- createInitialState
-  handleCommands initialState
+  handleCommands App { states =  Nothing , currentState = initialState }
 
 -- Scotty server example
 
