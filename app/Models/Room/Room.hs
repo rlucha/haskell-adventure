@@ -13,11 +13,11 @@ import Database.HDBC.Sqlite3
 import Data.Maybe
 
 data Room = Room {
-    name :: String
+    uid :: Integer
+  , name :: String
   , title :: String
   , description :: String
   , exits :: [Exit]
-  , uid :: Integer
 } deriving (Eq, Show, Generic)
 
 instance FromJSON Room
@@ -49,9 +49,13 @@ navigateToRoom room dir =
     Just e -> Just (getRoom $ roomID e)
     Nothing -> Nothing
 
+-- pass this to mapLookup using fetchRowsMap(?)
 sqlToRoom :: ([SqlValue], [[SqlValue]]) -> Room
-sqlToRoom (row, exits') = Room (fromSql $ row!!1) (fromSql $ row!!3) (fromSql $ row!!2) mapExits (fromSql roomID')
-  where roomID' = head row
+sqlToRoom (row, exits') = Room roomID' name' title' description' mapExits
+  where roomID' = fromSql $ head row
+        name' = fromSql $ row!!1
+        title' = fromSql $ row!!2
+        description' = fromSql $ row!!3
         mapExits = catMaybes $ sqlToExit <$> exits'
 
 sqlToExit :: [SqlValue] -> Maybe Exit

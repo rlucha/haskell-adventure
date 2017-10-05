@@ -65,33 +65,6 @@ handleRoomUpdate app =
             lastRoom = room $ last states'
     Nothing -> pure ()
 
--- -- Handle the maybe state for the initial case (fromMaybe?)
--- handleCommands :: State -> State -> IO ()
--- handleCommands state nextState =
---   case nextState of
---     EmptyState -> do
---       -- fetch the state from the last stateHistory item
---       _ <- print nextState
---       lastGoodState <- pure $ last (stateHistory state)
---       input <- createShell
---       newState <- updateStateRoom lastGoodState input
---       handleCommands lastGoodState newState
---     State {} ->  --first time we might have an EmptyState here... we don't want to do that
---       case state of
---         State {} -> do
---           st' <- pure $ state { stateHistory = stateHistory state ++ [nextState] }
---           _ <- printStatus nextState
---           input <- createShell
---           newState <- updateStateRoom st' input
---           handleCommands state newState
---         EmptyState -> do
---           st' <- pure nextState
---           _ <- printStatus nextState
---           input <- createShell
---           newState <- updateStateRoom st' input
---           handleCommands state newState
-
-
 printStatus :: App -> IO ()
 printStatus app =
   let currentState' = currentState app in do
@@ -100,7 +73,6 @@ printStatus app =
     _ <- putStrLn $ "\x1b[32m" ++ "Exits: " ++ roomExitsToString (room currentState') ++ "\x1b[0m" ++ "\n"
     _ <- putStrLn $ description (room currentState')
     pure ()
-
 
 updateRoom :: App -> Maybe Room -> App
 updateRoom app r = case r of
