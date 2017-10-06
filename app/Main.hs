@@ -11,7 +11,7 @@ import Control.Monad()
 import Data.Maybe()
 
 data App = App {
-    states :: Maybe [State]
+    states :: [State]
   , currentState :: State
 } deriving (Show)
 
@@ -29,38 +29,28 @@ createShell = do
 -- if different from the previous one
 stackState :: App -> App
 stackState app =
-  let currentState' = currentState app in
-    case states app of
-      Just states' ->
+  let currentState' = currentState app
+      states' = states app in
         if currentState' /= last states'
-          then app { states = Just $ states' ++ [currentState']}
+          then app { states = states' ++ [currentState']}
           else app
-      Nothing -> app { states = Just [currentState']}
 
+-- Split this into pieces
 handleCommands :: App -> IO ()
-handleCommands app =
-  case states app of
-    Nothing -> do -- This is just for the initial Program case
-      newApp <- pure $ stackState app
-      _ <- printStatus newApp
-      handleCommands newApp
-    Just _ -> do
-      _ <- handleRoomUpdate app
-      newApp' <- pure $ stackState app
-      input <- createShell
-      newApp <- updateStateRoom newApp' input
-      handleCommands newApp
+handleCommands app = do
+  _ <- handleRoomUpdate app -- Send back info to the client
+  newApp' <- pure $ stackState app -- Push the stack
+  input <- createShell -- Wait for inut
+  newApp <- updateStateRoom newApp' input -- Handle input to update app
+  handleCommands newApp -- Begin Again
 
 handleRoomUpdate :: App -> IO ()
 handleRoomUpdate app =
-  case states app of
-    Just states' ->
-      if currentRoom /= lastRoom
-        then printStatus app
-        else pure ()
-      where currentRoom = room (currentState app)
-            lastRoom = room $ last states'
-    Nothing -> pure ()
+  if currentRoom /= lastRoom
+    then printStatus app
+    else pure ()
+  where currentRoom = room (currentState app)
+        lastRoom = room $ last $ states app
 
 printStatus :: App -> IO ()
 printStatus app =
@@ -116,4 +106,4 @@ createInitialState = do
 main :: IO()
 main = do
   initialState <- createInitialState
-  handleCommands App { states =  Nothing , currentState = initialState }
+  handleCommands App { states = [initialState] , currentState = initialState }

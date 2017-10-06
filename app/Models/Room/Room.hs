@@ -5,7 +5,7 @@ module Models.Room.Room where
 import GHC.Generics
 import Control.Monad.IO.Class()
 import Control.Applicative ((<$>))
-import Data.Aeson (decode, FromJSON)
+import Data.Aeson (decode, FromJSON, ToJSON)
 import Data.ByteString.Lazy (ByteString)
 import Data.List (find)
 import Database.HDBC
@@ -21,11 +21,13 @@ data Room = Room {
 } deriving (Eq, Show, Generic)
 
 instance FromJSON Room
+instance ToJSON Room
 
 data Direction = N | S | W | E | Back | Invalid
   deriving (Eq, Show, Generic)
 
 instance FromJSON Direction
+instance ToJSON Direction
 
 data Exit = Exit {
   direction :: Direction,
@@ -33,6 +35,7 @@ data Exit = Exit {
 } deriving (Eq, Generic)
 
 instance FromJSON Exit
+instance ToJSON Exit
 
 instance Show Exit where
   show (Exit d _) = show d
