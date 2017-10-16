@@ -3,12 +3,16 @@
 -- Use handleDirections to print player direction
 -- Move terminal output fns to own file
 -- Add creation of room from terminal
+
 {-# LANGUAGE MultiWayIf#-}
+{-# LANGUAGE OverloadedStrings#-}
+
 module Main where
 
-import Models.Room.Room (Room(..), Direction(..), navigateToRoom, getRoom)
+import Models.Room.Room (Room(..), Direction(..), navigateToRoom, getRoom, createRoom)
+import Actions (Action(..))
 import Control.Monad
-import Data.Maybe()
+import Data.Maybe
 
 data App = App {
     states :: Maybe [State]
@@ -49,8 +53,10 @@ handleCommands app =
       handleRoomUpdate app -- Send back info to the client
       newApp' <- pure $ stackState app -- Push the stack
       input <- createShell -- Wait for inut
+      -- Call actionParser at this point and decide between any action, not just update room
       newApp <- updateStateRoom newApp' input -- Handle input to update app
-      handleCommands newApp -- Begin Again
+      newApp2 <- handleCreateRoom newApp input -- We begin to reduce here
+      handleCommands newApp2 -- Begin Again
 
 handleRoomUpdate :: App -> IO ()
 handleRoomUpdate app =
@@ -61,10 +67,10 @@ handleRoomUpdate app =
             lastRoom = room $ last states'
     Nothing -> printStatus app
 
-f :: Int -> Int
-f x = if
-   | x > 5 -> x
-   | otherwise -> 0
+-- f :: Int -> Int
+-- f x = if
+--    | x > 5 -> x
+--    | otherwise -> 0
 
 printStatus :: App -> IO ()
 printStatus app =
@@ -78,6 +84,28 @@ printStatus app =
 updateRoom :: App -> Maybe Room -> App
 updateRoom app (Just r) = app { currentState = (currentState app) { room = r } }
 updateRoom app _ = app
+--0
+safeCreateRoomAction :: [String] -> Maybe Action
+safeCreateRoomAction [name, title, description] = Just $ CreateRoomAction name title description -- you can destructure directly by value too, like in asdf
+safeCreateRoomAction _ = Nothing
+
+createAction :: [String] -> Maybe Action
+createAction (verb:params) = case verb of
+  "/create" -> safeCreateRoomAction params -- How to be sure we have the correct amount of strings to create the proper action?
+  _ -> Nothing
+
+applyAction :: Action -> App -> IO App -- we need something to unwrap an action and pass it as params to createRoom
+applyAction (CreateRoomAction name title description) app = do
+  _ <- createRoom name title description
+  pure app
+
+
+actionParser :: String -> Maybe Action
+actionParser input = case input of
+  "" -> Nothing
+  _ -> createAction $ words input
+  -- "n"
+  -- "s"
 
 f1 :: App -> String -> [Maybe Room] -> App
 f1 app actions = \[x, y] ->
@@ -88,9 +116,11 @@ f1 app actions = \[x, y] ->
     "s" -> yr
     _ -> app
 
+-- Handle other situations
 updateStateRoom :: App -> String -> IO App
 updateStateRoom app actions =
   let r = room (currentState app)
+  -- read this over and over again until you understand it
   -- [x, y] <- sequence $ fmap (navigateToRoom r) [N, S]
   in f1 app actions <$> traverse (navigateToRoom r) [N, S]
 

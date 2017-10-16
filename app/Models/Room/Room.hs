@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Models.Room.Room where
@@ -17,7 +18,7 @@ data Room = Room {
   , name :: String
   , title :: String
   , description :: String
-  , exits :: [Exit]
+  , exits :: [Exit] --Make this maybe?
 } deriving (Eq, Show, Generic)
 
 instance FromJSON Room
@@ -86,8 +87,17 @@ getRoom id' = do
   e <- quickQuery' conn "select direction, exit_room_id from exits where room_id = ?" [toSql id']
   return $ sqlToRoom (head q, e) -- avoid head q, make it headMay
 
-class FromRow a where
-  readRow :: SqlValue -> a
+
+createRoom :: String -> String -> String -> IO ()
+createRoom name' desc title' = do
+  conn <- connectSqlite3 "db.sql"
+  stmt <- prepare conn "insert into rooms (name, description, title) values (?, ?, ?)"
+  _    <- execute stmt [toSql name', toSql desc, toSql title']
+  commit conn
+  disconnect conn
+
+-- class FromRow a where
+--   readRow :: SqlValue -> a
 
 -- instance FromRow Room where
 --   readRow sqlValue = Room
@@ -117,16 +127,6 @@ class FromRow a where
 --     where
 --         toString ∷  Map String SqlValue → String
 --         toString m = (fromSql . fromJust . (Map.lookup "word"))∷ String
-
-
--- how to handle errors?
-createRoom :: Room -> IO ()
-createRoom room = do
-  conn <- connectSqlite3 "db.sql"
-  stmt <- prepare conn "insert into rooms (name, description) values (?,?)"
-  _    <- execute stmt [toSql (name room), toSql (description room)]
-  commit conn
-  disconnect conn
 
 -- createRoomsExits :: Room -> IO ()
 -- createRoomsExits room = do
