@@ -58,6 +58,14 @@ handleCommands app =
       newApp2 <- handleCreateRoom newApp input -- We begin to reduce here
       handleCommands newApp2 -- Begin Again
 
+      -- handle UI update
+        -- decide on which parts to rerender depending on what data has changed
+      -- grow the state stack
+      -- get input
+      -- parse action
+      -- maybe applyAction <$> ? (update state)
+      -- loop
+
 handleRoomUpdate :: App -> IO ()
 handleRoomUpdate app =
   case states app of
@@ -98,7 +106,6 @@ applyAction :: Action -> App -> IO App -- we need something to unwrap an action 
 applyAction (CreateRoomAction name title description) app = do
   _ <- createRoom name title description
   pure app
-
 
 actionParser :: String -> Maybe Action
 actionParser input = case input of
