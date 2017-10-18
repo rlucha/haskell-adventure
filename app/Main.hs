@@ -3,6 +3,7 @@
 -- Use handleDirections to print player direction
 -- Move terminal output fns to own file
 -- Add creation of room from terminal
+-- Add n s w e to action creation
 
 {-# LANGUAGE MultiWayIf#-}
 {-# LANGUAGE OverloadedStrings#-}
@@ -12,7 +13,7 @@ module Main where
 import Models.Room.Room (Room(..), Direction(..), navigateToRoom, getRoom, createRoom)
 import Actions (Action(..))
 import Control.Monad
-import Data.Maybe
+-- import Data.Maybe
 
 data App = App {
     states :: Maybe [State]
@@ -50,13 +51,21 @@ handleCommands app =
       newApp' <- pure $ stackState app -- Push the stack
       handleCommands newApp' -- Begin Again
     Just _ -> do
+      -- handleRoomUpdate app -- Send back info to the client
+      -- newApp' <- pure $ stackState app -- Push the stack
+      -- input <- createShell -- Wait for inut
+      -- -- Call actionParser at this point and decide between any action, not just update room
+      -- newApp <- updateStateRoom newApp' input -- Handle input to update app
+      -- newApp2 <- handleCreateRoom newApp input -- We begin to reduce here
+      -- handleCommands newApp2 -- Begin Again
+
+
       handleRoomUpdate app -- Send back info to the client
       newApp' <- pure $ stackState app -- Push the stack
       input <- createShell -- Wait for inut
       -- Call actionParser at this point and decide between any action, not just update room
-      newApp <- updateStateRoom newApp' input -- Handle input to update app
-      newApp2 <- handleCreateRoom newApp input -- We begin to reduce here
-      handleCommands newApp2 -- Begin Again
+      newApp <- newUpdateApp input newApp'
+      handleCommands newApp -- Begin Again
 
       -- handle UI update
         -- decide on which parts to rerender depending on what data has changed
@@ -65,6 +74,9 @@ handleCommands app =
       -- parse action
       -- maybe applyAction <$> ? (update state)
       -- loop
+
+newUpdateApp :: String -> App -> IO App
+newUpdateApp input app = maybe (pure app) (`applyAction` app) (actionParser input)
 
 handleRoomUpdate :: App -> IO ()
 handleRoomUpdate app =
@@ -94,18 +106,20 @@ updateRoom app (Just r) = app { currentState = (currentState app) { room = r } }
 updateRoom app _ = app
 --0
 safeCreateRoomAction :: [String] -> Maybe Action
-safeCreateRoomAction [name, title, description] = Just $ CreateRoomAction name title description -- you can destructure directly by value too, like in asdf
+safeCreateRoomAction [n, t, d] = Just $ CreateRoomAction n t d -- you can destructure directly by value too, like in asdf
 safeCreateRoomAction _ = Nothing
 
 createAction :: [String] -> Maybe Action
 createAction (verb:params) = case verb of
   "/create" -> safeCreateRoomAction params -- How to be sure we have the correct amount of strings to create the proper action?
   _ -> Nothing
+createAction [] = Nothing
 
 applyAction :: Action -> App -> IO App -- we need something to unwrap an action and pass it as params to createRoom
-applyAction (CreateRoomAction name title description) app = do
-  _ <- createRoom name title description
+applyAction (CreateRoomAction n t d) app = do
+  _ <- createRoom n t d
   pure app
+applyAction _ app = pure app
 
 actionParser :: String -> Maybe Action
 actionParser input = case input of

@@ -85,14 +85,22 @@ getRoom id' = do
   conn <- connectSqlite3 "db.sql"
   q <- quickQuery' conn "select * from rooms where id = ?" [toSql id']
   e <- quickQuery' conn "select direction, exit_room_id from exits where room_id = ?" [toSql id']
+  disconnect conn
   return $ sqlToRoom (head q, e) -- avoid head q, make it headMay
 
-
 createRoom :: String -> String -> String -> IO ()
-createRoom name' desc title' = do
+createRoom name' desc' title' = do
   conn <- connectSqlite3 "db.sql"
   stmt <- prepare conn "insert into rooms (name, description, title) values (?, ?, ?)"
-  _    <- execute stmt [toSql name', toSql desc, toSql title']
+  _    <- execute stmt [toSql name', toSql desc', toSql title']
+  commit conn
+  disconnect conn
+
+createExit :: Room -> Direction -> roomID -> IO ()
+createExit room' dir' exitRoomID' = do
+  conn <- connectSqlite3 "db.sql"
+  stmt <- prepare conn "insert into exits (room_id, direction, exit_room_id) values (?, ?, ?)"
+  _    <- execute stmt [toSql (uid room'), toSql dir', toSql exitRoomID']
   commit conn
   disconnect conn
 
